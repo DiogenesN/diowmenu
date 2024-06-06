@@ -69,7 +69,7 @@ char *process_arguments(char **command_p) {
 	return strdup(tmp); // Return a new copy of the string
 }
 
-void run_cmd(char *command) {
+static void run_main_cmd(char *command) {
 	pid_t pid;
 	int argc = 0;
 	char *argv[MAX_ARGS];
@@ -100,5 +100,23 @@ void run_cmd(char *command) {
 	for (int i = 0; argv[i] != NULL; i++) {
 		///printf("argv[%d]: %s\n", i, argv[i]);
 		free(argv[i]); // Free each string
+	}
+}
+
+void run_cmd(char *command) {
+	pid_t pid = fork();
+	if (pid == 0) {
+		// In child process
+		run_main_cmd(command);
+		exit(0); // Ensure the child process exits after running the command
+	}
+	else if (pid > 0) {
+		// In parent process
+		int status;
+		waitpid(pid, &status, 0); // Wait for the child process to finish
+	}
+	else {
+		// fork failed
+		perror("fork");
 	}
 }
