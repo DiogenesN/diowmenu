@@ -21,18 +21,22 @@ char addPath[2048];
 extern char **environ;
 static int currChar = 0;
 static bool isUsrBin = true;
+static bool firstArgPassed = false; // used to add path only to the first argument
 
 char *process_arguments(char **command_p) {
-	// Trying to guess the path if not provided
-	if (isUsrBin && iterCount == 0 && command_p[0][0] != '/') { // path to 
-		snprintf(addPath, sizeof(addPath), "/usr/local/bin/%s", *command_p);
-		*command_p = addPath;
-		iterCount = iterCount + 1;
-	}
-	else if (!isUsrBin && iterCount == 1 && command_p[0][0] != '/') {
-		snprintf(addPath, sizeof(addPath), "/usr/bin/%s", *command_p);
-		*command_p = addPath;
-		iterCount = 2;
+	// Check if the command was passed without path
+	if (command_p[0][0] != '/' && !firstArgPassed) {
+		// Trying to guess the path if not provided
+		if (isUsrBin && iterCount == 0) { // path to
+			snprintf(addPath, sizeof(addPath), "/usr/local/bin/%s", *command_p);
+			*command_p = addPath;
+			iterCount = iterCount + 1;
+		}
+		else if (!isUsrBin && iterCount == 1) {
+			snprintf(addPath, sizeof(addPath), "/usr/bin/%s", *command_p);
+			*command_p = addPath;
+			iterCount = 2;
+		}
 	}
 
 	char *text_p = *command_p;
@@ -77,7 +81,9 @@ static void run_main_cmd(char *command) {
 
 	/// Tokenize command and populate argv
 	while (*command_p != '\0' && argc < MAX_ARGS) {
+		// sends one argument at a time and returns properly formatted string to populate array
 		char *string = process_arguments(&command_p);
+		firstArgPassed = true;
 		argv[argc] = string;
 		argc = argc + 1;
 	}
@@ -90,7 +96,8 @@ static void run_main_cmd(char *command) {
 
 	if (status != 0 && iterCount < 2) {
 		isUsrBin = false;
-		run_cmd((char *)command);
+		firstArgPassed = false;
+		run_main_cmd((char *)command);
 	}
 	else if (status != 0 && iterCount == 2) {
 		fprintf(stderr, "Error: %s. Please provide full path to %s\n", strerror(status), argv[0]);
